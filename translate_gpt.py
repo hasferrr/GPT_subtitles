@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import logging
 from typing import List
 
+from subtitle_class import Subtitle
+
 def check_for_errors(log_file_path, starting_line):
     # First, check if the log file exists
     if not os.path.exists(log_file_path):
@@ -44,73 +46,6 @@ encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
 def count_token(str):
     num_tokens = len(encoding.encode(str))
     return num_tokens
- 
-class Subtitle:
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-        self.content = self.load_subtitles()
-
-    def load_subtitles(self):
-        with open(self.file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-
-    def save_subtitles(self, file_path: str, content: str):
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
-
-    def split_subtitles(self, batch_size: int):
-        subtitle_blocks = self.content.strip().split('\n\n')
-        batches: List[str] = []
-
-        for i in range(0, len(subtitle_blocks), batch_size):
-            batch = '\n\n'.join(subtitle_blocks[i:i + batch_size])
-            batches.append(batch)
-
-        return batches
-
-    def process_subtitles(self, subtitles: str):
-        lines = subtitles.split('\n')
-        processed_lines: List[str] = []
-        timestamps: List[str] = []
-
-        for line in lines:
-            if re.match(r'\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}', line):
-                timestamps.append(line)
-            else:
-                processed_lines.append(line)
-
-        return '\n'.join(processed_lines), timestamps
-
-    def get_processed_batches_and_timestamps(self, batch_size: int):
-        """
-        Example (batch_size=2):
-        processed_batches = ['1\nMs. Kano!\n\n2\nDid she go already?']
-        timestamps_batches = [['00:00:04,800 --> 00:00:06,170', '00:00:06,260 --> 00:00:08,260']]
-        """
-        subtitle_batches = self.split_subtitles(batch_size)
-        processed_batches: List[str] = []
-        timestamps_batches: List[List[str]] = []
-        for batch in subtitle_batches:
-            processed_batch, timestamps = self.process_subtitles(batch)
-            processed_batches.append(processed_batch.replace('\ufeff', ''))
-            timestamps_batches.append(timestamps)
-        return processed_batches, timestamps_batches
-
-    @staticmethod
-    def merge_subtitles_with_timestamps(translated_subtitles: str, timestamps: List[str]):
-        translated_lines = translated_subtitles.split('\n')
-        merged_lines: List[str] = []
-
-        timestamp_idx = 0
-        for line in translated_lines:
-            if re.match(r'\d+\s*$', line):
-                merged_lines.append(line)
-                merged_lines.append(timestamps[timestamp_idx])
-                timestamp_idx += 1
-            else:
-                merged_lines.append(line)
-
-        return '\n'.join(merged_lines)
 
 
 class TranslationMapping:
