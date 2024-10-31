@@ -81,7 +81,6 @@ class Subtitle:
 
         return '\n'.join(processed_lines), timestamps
 
-
     def get_processed_batches_and_timestamps(self, batch_size: int):
         """
         Example (batch_size=2):
@@ -97,6 +96,21 @@ class Subtitle:
             timestamps_batches.append(timestamps)
         return processed_batches, timestamps_batches
 
+    @staticmethod
+    def merge_subtitles_with_timestamps(translated_subtitles: str, timestamps: List[str]):
+        translated_lines = translated_subtitles.split('\n')
+        merged_lines: List[str] = []
+
+        timestamp_idx = 0
+        for line in translated_lines:
+            if re.match(r'\d+\s*$', line):
+                merged_lines.append(line)
+                merged_lines.append(timestamps[timestamp_idx])
+                timestamp_idx += 1
+            else:
+                merged_lines.append(line)
+
+        return '\n'.join(merged_lines)
 
 
 class TranslationMapping:
@@ -169,21 +183,6 @@ class TranslationMapping:
         return "\n".join(f"{proper_noun} : {mapping['translation']}" for proper_noun, mapping in sorted_mappings)
 
 
-def merge_subtitles_with_timestamps(translated_subtitles: str, timestamps: List[str]):
-    translated_lines = translated_subtitles.split('\n')
-    merged_lines: List[str] = []
-
-    timestamp_idx = 0
-    for line in translated_lines:
-        if re.match(r'\d+\s*$', line):
-            merged_lines.append(line)
-            merged_lines.append(timestamps[timestamp_idx])
-            timestamp_idx += 1
-        else:
-            merged_lines.append(line)
-
-    return '\n'.join(merged_lines)
-        
 def count_blocks(subtitle_string):
     if not subtitle_string.endswith('\n'):
         subtitle_string += '\n'
@@ -555,7 +554,7 @@ Guidelines:
 
         return translated_subtitles, total_used_dollars, count, wasted_dollars
 
-    def batch_translate(self, subtitle_batches: List[str], timestamps_batches: List[List[str]]):
+    def batch_translate(self, subtitle_batches: List[str], timestamps_batches: List[List[str]], subtitle_instance: Subtitle):
 
 
         translated = []
@@ -608,7 +607,7 @@ Guidelines:
 
             tt, used_dollars, retry_count, wasted_dollars = self.translate_subtitles(t, prev_subtitle, next_subtitle, prev_translated_subtitle)
             prev_translated_subtitle = tt
-            tt_merged = merge_subtitles_with_timestamps(tt, timestamps_batches[i])
+            tt_merged = subtitle_instance.merge_subtitles_with_timestamps(tt, timestamps_batches[i])
             total_dollars += used_dollars
             number_of_retry += retry_count
             total_wasted_dollars += wasted_dollars
@@ -653,7 +652,7 @@ def translate_with_gpt(input_file, target_language='zh', source_language='en', b
         titles=file_name, video_info=video_info, input_path=input_file, no_translation_mapping=no_translation_mapping, load_from_tmp=load_from_tmp)
 
     subtitle_batches, timestamps_batches = subtitle.get_processed_batches_and_timestamps(batch_size)
-    translated_subtitles = translator.batch_translate(subtitle_batches, timestamps_batches)
+    translated_subtitles = translator.batch_translate(subtitle_batches, timestamps_batches, subtitle)
 
     output_file = os.path.join(os.path.dirname(input_file), f"{os.path.splitext(os.path.basename(input_file))[0]}_{target_language}_gpt.srt")
     subtitle.save_subtitles(output_file, translated_subtitles)
