@@ -69,7 +69,7 @@ class Subtitle:
         return '\n'.join(merged_lines)
 
 
-class SubtitleSAA(Subtitle):
+class SubtitleSSA(Subtitle):
     """
     Extends `Subtitle` class\n
     Used for SubStation Alpha (SSA) file or `.ass` file format\n
@@ -83,6 +83,7 @@ class SubtitleSAA(Subtitle):
 
         self.content_list = self.content.split('\n')
         self.content_dialogue: List[str] = []
+        self.last_dialogue_idx: int | None = None
 
         # Split only for dialogue (Events)
         # not including Script Info, V4+ Styles, etc
@@ -97,11 +98,18 @@ class SubtitleSAA(Subtitle):
                 return '\n'.join(self.content_list[:i+2])
         return ''
 
+    def getLinesAfterDialogue(self):
+        if self.last_dialogue_idx != None:
+            return '\n'.join(self.content_dialogue[self.last_dialogue_idx + 1:])
+        return ''
+
     # @override
     def save_subtitles(self, file_path: str, content: str):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(self.getLinesBeforeDialogue())
             f.write(content)
+            f.write('\n')
+            f.write(self.getLinesAfterDialogue())
 
     # @override
     def split_subtitles(self, _):
@@ -123,9 +131,11 @@ class SubtitleSAA(Subtitle):
 
         cm = self.content_dialogue[0].count(',')
 
-        for dialogue in self.content_dialogue:
-            if (dialogue.startswith('Comment:')):
+        for i, dialogue in enumerate(self.content_dialogue):
+            if (not dialogue.startswith('Dialogue:')):
                 continue
+
+            self.last_dialogue_idx = i
 
             # split on the cm'th index
             split_idx = -1
