@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import logging
 from typing import List
 
-from subtitle_class import Subtitle
+from subtitle_class import Subtitle, SubtitleSSA
 
 def check_for_errors(log_file_path, starting_line):
     # First, check if the log file exists
@@ -574,7 +574,9 @@ Guidelines:
         
         return translated
 
-def translate_with_gpt(input_file, target_language='zh', source_language='en', batch_size=40, model='gpt-3.5-turbo-16k', video_info=None, no_translation_mapping=False, load_from_tmp=False):
+def translate_with_gpt(input_file: str, target_language='zh', source_language='en', batch_size=40, model='gpt-3.5-turbo-16k', video_info=None, no_translation_mapping=False, load_from_tmp=False):
+    file_ext = '.ass' if input_file.endswith('.ass') else '.srt'
+
     # check log file
     log_file_path = os.path.join(os.path.dirname(input_file), 'translator.log')
     starting_line = count_log_lines(log_file_path)
@@ -582,14 +584,14 @@ def translate_with_gpt(input_file, target_language='zh', source_language='en', b
     # Extract the file name without the extension
     file_name = os.path.splitext(os.path.basename(input_file))[0]
     
-    subtitle = Subtitle(input_file)
+    subtitle = SubtitleSSA(input_file) if input_file.endswith('.ass') else Subtitle(input_file)
     translator = Translator(model=model, batch_size=batch_size, target_language=target_language, source_language=source_language, 
         titles=file_name, video_info=video_info, input_path=input_file, no_translation_mapping=no_translation_mapping, load_from_tmp=load_from_tmp)
 
     subtitle_batches, timestamps_batches = subtitle.get_processed_batches_and_timestamps(batch_size)
     translated_subtitles = translator.batch_translate(subtitle_batches, timestamps_batches, subtitle)
 
-    output_file = os.path.join(os.path.dirname(input_file), f"{os.path.splitext(os.path.basename(input_file))[0]}_{target_language}_gpt.srt")
+    output_file = os.path.join(os.path.dirname(input_file), f"{os.path.splitext(os.path.basename(input_file))[0]}_{target_language}_gpt{file_ext}")
     subtitle.save_subtitles(output_file, translated_subtitles)
     
     # check if an error was logged
