@@ -107,6 +107,7 @@ class SubtitleSSA(Subtitle):
     def save_subtitles(self, file_path: str, content: str):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(self.getLinesBeforeDialogue())
+            f.write('\n')
             f.write(content)
             f.write('\n')
             f.write(self.getLinesAfterDialogue())
@@ -129,7 +130,13 @@ class SubtitleSSA(Subtitle):
         combined_dialogue: List[str] = []
         times: List[str] = []
 
-        cm = self.content_dialogue[0].count(',')
+        def split_dialogue(dialogue_line: str):
+            parts = dialogue_line.split(',', 9)
+            if len(parts) == 10:
+                rest = ','.join(parts[:9]) + ','
+                text = parts[9].strip()
+                return {'text': text, 'rest': rest}
+            return {'text': '', 'rest': ''}
 
         for i, dialogue in enumerate(self.content_dialogue):
             if (not dialogue.startswith('Dialogue:')):
@@ -137,17 +144,10 @@ class SubtitleSSA(Subtitle):
 
             self.last_dialogue_idx = i
 
-            # split on the cm'th index
-            split_idx = -1
-            for _ in range(cm):
-                split_idx = dialogue.find(',', split_idx + 1)
-                if split_idx == -1:
-                    break
-            split_idx += 1
-
             # generate partial batch
-            combined_dialogue.append(f'{dialogue_number}\n{dialogue[split_idx:]}')
-            times.append(dialogue[:split_idx])
+            res = split_dialogue(dialogue)
+            combined_dialogue.append(f'{dialogue_number}\n' + res['text'])
+            times.append(res['rest'])
 
             # combine into single batch
             if batch_count == batch_size:
@@ -177,4 +177,5 @@ class SubtitleSSA(Subtitle):
                 merged_lines.append(timestamps[timestamp_idx] + line)
                 timestamp_idx += 1
 
+        merged_lines.append('')
         return '\n'.join(merged_lines)

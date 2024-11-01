@@ -183,6 +183,8 @@ class Translator:
         # TODO: use a mapping to transform language code
         if target_language == "zh":
             self.target_language = "Simplified Chinese"
+        elif target_language == "id":
+            self.target_language = "Indonesian"
         
         # Setting up the logger
         self.logger = logging.getLogger(__name__)
